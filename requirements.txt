@@ -1,0 +1,19 @@
+# StudyVault dependencies
+
+# PDF extraction (install at least one)
+pymupdf>=1.23.0           # Recommended
+# pdfplumber>=0.10.0      # Fallback
+
+# LLM
+openai>=1.0.0             # For OpenAI
+# Ollama: no pip package — just run: ollama serve
+
+# LangGraph pipeline
+langgraph>=0.2.0
+langchain-core>=0.2.0
+
+# MCP server
+mcp>=1.0.0                # pip install mcp
+
+# Terminal UI
+rich>=13.0.0
