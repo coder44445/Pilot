@@ -36,7 +36,7 @@ except ImportError:
 from src.graph import build_graph, run_mcp_start, run_mcp_resume
 from src.graph_state import default_state
 
-mcp = FastMCP("StudyVault")
+mcp = FastMCP("StudyPilot")
 
 # One shared graph instance — its MemorySaver holds all session checkpoints
 _graph = build_graph(interrupt_at_review=True)
