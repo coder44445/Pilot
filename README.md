@@ -1,4 +1,4 @@
-# 📚 StudyVault
+# 📚 Pilot
 
 > Turn any PDF into a personalized, day-by-day Obsidian study vault — in one command.
 
