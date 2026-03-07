@@ -1,38 +1,52 @@
 """
 LangGraph state schema.
 
-Split into InputConfig (static) + PipelineState (mutable).
-This makes it clear what's config vs. what's pipeline data,
-and keeps things clean as we add new input sources.
+InputConfig  — static config, set once, never mutated by nodes
+PipelineState — full state including all mutable pipeline data
+
+Error/retry fields:
+  node_errors:    dict of {node_name: [error_str, ...]} — full history per node
+  failed_nodes:   set-as-list of node names that failed this run
+  retry_counts:   dict of {node_name: int} — how many times retried
+  status:         current pipeline stage (see STATUS_* constants)
 """
 
+from pydantic import BaseModel
 from typing import Annotated
 from typing_extensions import TypedDict
 import operator
 
 
+# Status constants
+
+STATUS_STARTING         = "starting"
+STATUS_PDF_EXTRACTED    = "pdf_extracted"
+STATUS_TOPICS_EXTRACTED = "topics_extracted"
+STATUS_AWAITING_REVIEW  = "awaiting_review"
+STATUS_REVIEWED         = "reviewed"
+STATUS_SCHEDULED        = "scheduled"
+STATUS_NOTES_WRITTEN    = "notes_written"
+STATUS_COMPLETE         = "complete"
+STATUS_FAILED           = "failed"     # node failed but pipeline continues with retry
+
+
+# State schema
+
 class InputConfig(TypedDict):
-    """Set once at pipeline start. Nodes read but never write these."""
     pdf_path:     str
     vault_path:   str
     llm_provider: str
     llm_model:    str
     ollama_url:   str
-    user_profile: dict   # UserProfile.to_dict() — serialisable for checkpointing
+    user_profile: dict
 
 
 class PipelineState(InputConfig):
-    """
-    Full pipeline state. Annotated fields use reducers for parallel fan-in:
-      raw_topics:  lists from parallel chunk nodes are concatenated
-      chunks_done: ints are summed
-      notes_map:   dicts are merged
-    """
     # PDF
     pdf_text:        str
     pdf_metadata:    dict
 
-    # Chunk extraction (parallel)
+    # Chunk extraction (parallel fan-in)
     raw_topics:      Annotated[list, operator.add]
     chunks_done:     Annotated[int,  operator.add]
     total_chunks:    int
@@ -48,13 +62,19 @@ class PipelineState(InputConfig):
     # Schedule
     days:            list
 
-    # Notes (parallel)
+    # Notes (parallel fan-in)
     notes_map:       Annotated[dict, lambda a, b: {**a, **b}]
 
-    # Output + control
+    # Output
     written_files:   list
+
+    # Error tracking — each node appends its errors, never overwrites
+    node_errors:     Annotated[dict, lambda a, b: {**a, **b}]   # {node: [errors]}
+    failed_nodes:    Annotated[list, operator.add]               # accumulates failures
+    retry_counts:    Annotated[dict, lambda a, b: {**a, **b}]   # {node: count}
+
+    # Pipeline control
     status:          str
-    error:           str
     _mcp_mode:       bool
 
 
@@ -66,7 +86,6 @@ def default_state(
     ollama_url:   str,
     user_profile: dict,
 ) -> dict:
-    """Fully initialised state with safe defaults."""
     return {
         "pdf_path":       pdf_path,
         "vault_path":     vault_path,
@@ -86,7 +105,9 @@ def default_state(
         "days":           [],
         "notes_map":      {},
         "written_files":  [],
-        "status":         "starting",
-        "error":          "",
+        "node_errors":    {},
+        "failed_nodes":   [],
+        "retry_counts":   {},
+        "status":         STATUS_STARTING,
         "_mcp_mode":      False,
     }
