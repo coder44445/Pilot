@@ -11,6 +11,7 @@ openai>=1.0.0             # For OpenAI
 # LangGraph pipeline
 langgraph>=0.2.0
 langchain-core>=0.2.0
+langgraph-checkpoint-sqlite>=1.0.0  # persistent checkpoints (resume on restart)
 
 # MCP server
 mcp>=1.0.0                # pip install mcp
