@@ -3,21 +3,14 @@ Pilot LangGraph pipeline.
 
 KEY BEHAVIOURS:
   1. Persistent checkpoints via SqliteSaver — survives process crashes/restarts
-  2. Deterministic thread_id derived from pdf_path+vault_path — same inputs
-     always resume the same run, never re-read the PDF
-  3. Nodes are idempotent — if output already in state, they skip themselves
-  4. Errors are recorded in state but never stop the graph — @resilient_node
-     retries up to N times then logs and continues
-  5. After the full graph completes, a summary shows what succeeded/failed
-
-Checkpoint DB location:
-  {vault_path}/.Pilot_checkpoints.db
-
-To force a fresh run (ignore all checkpoints):
-  delete the .db file or pass force_restart=True to run_cli()
+  2. SqliteSaver MUST be used as a context manager (with block) — fixed here
+  3. Deterministic thread_id from pdf_path+vault_path — same inputs always resume
+  4. Nodes are idempotent — skip themselves if output already in state
+  5. Errors recorded in state, never stop the graph — @resilient_node handles retry
 """
 
 import hashlib
+from contextlib import contextmanager
 from pathlib import Path
 
 from langgraph.graph import StateGraph, END
@@ -38,44 +31,48 @@ from src.retry import summarise_errors
 from src.display import console
 
 
-# Thread ID
+# Thread ID 
+
 def make_thread_id(pdf_path: str, vault_path: str) -> str:
-    """
-    Deterministic thread ID from inputs.
-    Same PDF + same vault = same thread = resume from checkpoint.
-    """
     key = f"{Path(pdf_path).resolve()}::{Path(vault_path).resolve()}"
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
 
-# Checkpoint DB
-def _get_checkpointer(vault_path: str):
+# Checkpointer context manager
+
+@contextmanager
+def _checkpointer(vault_path: str):
     """
-    SqliteSaver stored inside the vault directory.
-    Falls back to MemorySaver if sqlite is unavailable.
+    Yield a checkpointer, properly opened and closed.
+
+    SqliteSaver requires a context manager — calling methods on a closed
+    connection raises sqlite3.ProgrammingError. This wrapper ensures it's
+    always opened before use and closed after.
+
+    Falls back to MemorySaver if langgraph-checkpoint-sqlite is not installed.
     """
     try:
         from langgraph.checkpoint.sqlite import SqliteSaver
-        db_path = Path(vault_path) / ".pliot_checkpoints.db"
+        db_path = Path(vault_path) / ".pilot_checkpoints.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        return SqliteSaver.from_conn_string(str(db_path)).__enter__()
+        with SqliteSaver.from_conn_string(str(db_path)) as cp:
+            yield cp
     except ImportError:
         console.print(
             "[yellow]  langgraph-checkpoint-sqlite not installed — "
-            "using in-memory checkpoints (state lost on restart)[/yellow]\n"
-            "[dim]  Install: pip install langgraph-checkpoint-sqlite[/dim]"
+            "using in-memory checkpoints (progress lost on restart)[/yellow]\n"
+            "[dim]  Fix: pip install langgraph-checkpoint-sqlite[/dim]"
         )
         from langgraph.checkpoint.memory import MemorySaver
-        return MemorySaver()
+        yield MemorySaver()
 
 
 # Routing
+
 def _route_after_pdf(state: dict):
-    """Fan-out into parallel chunk extraction."""
     if "extract_pdf" in state.get("failed_nodes", []):
         console.print("[red]  extract_pdf failed — cannot continue[/red]")
         return END
-    # If topics already built (resume), skip straight past chunk extraction
     if state.get("topics"):
         console.print("  [dim]topics already built — skipping chunk extraction[/dim]")
         return "dedup_topics"
@@ -105,21 +102,19 @@ def _route_after_dedup(state: dict):
 
 def _route_after_review(state: dict):
     if state.get("status") == STATUS_AWAITING_REVIEW:
-        return END   # MCP pause
+        return END
     return "build_schedule"
 
 
 def _route_after_schedule(state: dict):
-    """Fan-out into parallel note writing."""
     if "build_schedule" in state.get("failed_nodes", []) and not state.get("days"):
         console.print("[yellow]  schedule failed — writing vault without day plan[/yellow]")
         return "write_vault"
 
-    topics = state.get("approved_topics") or state.get("topics", [])
-    days   = state.get("days", [])
+    topics    = state.get("approved_topics") or state.get("topics", [])
+    days      = state.get("days", [])
+    notes_done = set(state.get("notes_map", {}).keys())
 
-    # Which topics still need notes (not already in notes_map)
-    notes_done    = set(state.get("notes_map", {}).keys())
     scheduled_ids = {
         t.get("topic_id")
         for day in days
@@ -145,7 +140,7 @@ def _route_after_note(state: dict):
 
 # Graph builder
 
-def build_graph(checkpointer, interrupt_at_review: bool = False):
+def _build_graph(checkpointer, interrupt_at_review: bool = False):
     g = StateGraph(PipelineState)
 
     g.add_node("extract_pdf",    node_extract_pdf)
@@ -176,56 +171,44 @@ def build_graph(checkpointer, interrupt_at_review: bool = False):
 # CLI runner
 
 def run_cli(initial_state: dict, force_restart: bool = False) -> dict:
-    """
-    Run the full pipeline (CLI mode).
+    vault_path = initial_state["vault_path"]
+    thread_id  = make_thread_id(initial_state["pdf_path"], vault_path)
+    thread_cfg = {"configurable": {"thread_id": thread_id}}
 
-    - First run: starts fresh, saves checkpoints as it goes
-    - Subsequent runs with same pdf+vault: resumes from last completed node
-    - force_restart=True: ignores all checkpoints, starts over
+    with _checkpointer(vault_path) as cp:
+        graph = _build_graph(cp, interrupt_at_review=False)
 
-    The user never needs to think about this — it just works.
-    """
-    vault_path  = initial_state["vault_path"]
-    thread_id   = make_thread_id(initial_state["pdf_path"], vault_path)
-    checkpointer = _get_checkpointer(vault_path)
-    graph        = build_graph(checkpointer, interrupt_at_review=False)
-    thread_cfg   = {"configurable": {"thread_id": thread_id}}
-
-    # Check if there's an existing checkpoint for this run
-    existing = graph.get_state(thread_cfg)
-
-    if existing and existing.values and not force_restart:
-        status = existing.values.get("status", "unknown")
-        if status == "complete":
+        existing = graph.get_state(thread_cfg)
+        if existing and existing.values and not force_restart:
+            status = existing.values.get("status", "unknown")
+            if status == "complete":
+                console.print(
+                    f"\n[green]✓ Already completed.[/green]"
+                    f"\n[dim]  Use --restart to regenerate.[/dim]"
+                )
+                return existing.values
             console.print(
-                f"\n[green]✓ This vault was already completed.[/green]"
-                f"\n[dim]  Delete {vault_path}/.pilot_checkpoints.db to regenerate.[/dim]"
+                f"\n[bold yellow]↩ Resuming[/bold yellow] "
+                f"[dim](status: {status}, thread: {thread_id})[/dim]"
             )
-            return existing.values
-        console.print(
-            f"\n[bold yellow]↩ Resuming from checkpoint[/bold yellow] "
-            f"[dim](status: {status}, thread: {thread_id})[/dim]"
-        )
-        # Resume from checkpoint — pass None as input (state is in checkpointer)
-        input_state = None
-    else:
-        if force_restart:
-            console.print("[dim]  force_restart — ignoring existing checkpoints[/dim]")
-        console.print(f"[dim]  checkpoint thread: {thread_id}[/dim]")
-        input_state = initial_state
+            input_state = None
+        else:
+            if force_restart:
+                console.print("[dim]  force_restart — ignoring checkpoint[/dim]")
+            console.print(f"[dim]  checkpoint thread: {thread_id}[/dim]")
+            input_state = initial_state
 
-    final = None
-    try:
-        for step in graph.stream(input_state, thread_cfg, stream_mode="values"):
-            final = step
-    except KeyboardInterrupt:
-        console.print(
-            "\n[yellow]Interrupted — progress saved.[/yellow]"
-            "\n[dim]Rerun the same command to resume.[/dim]"
-        )
-        # Return whatever we have so far
-        snapshot = graph.get_state(thread_cfg)
-        return snapshot.values if snapshot else {}
+        final = None
+        try:
+            for step in graph.stream(input_state, thread_cfg, stream_mode="values"):
+                final = step
+        except KeyboardInterrupt:
+            console.print(
+                "\n[yellow]Interrupted — progress saved.[/yellow]"
+                "\n[dim]Rerun the same command to resume.[/dim]"
+            )
+            snapshot = graph.get_state(thread_cfg)
+            return snapshot.values if snapshot else {}
 
     final = final or {}
     summarise_errors(final)
@@ -235,39 +218,36 @@ def run_cli(initial_state: dict, force_restart: bool = False) -> dict:
 # MCP runners
 
 def run_mcp_start(initial_state: dict, thread_id: str, vault_path: str) -> dict:
-    checkpointer = _get_checkpointer(vault_path)
-    graph        = build_graph(checkpointer, interrupt_at_review=True)
-    thread_cfg   = {"configurable": {"thread_id": thread_id}}
-
-    final = None
-    for step in graph.stream(
-        {**initial_state, "_mcp_mode": True},
-        thread_cfg,
-        stream_mode="values",
-    ):
-        final = step
+    thread_cfg = {"configurable": {"thread_id": thread_id}}
+    with _checkpointer(vault_path) as cp:
+        graph = _build_graph(cp, interrupt_at_review=True)
+        final = None
+        for step in graph.stream(
+            {**initial_state, "_mcp_mode": True},
+            thread_cfg,
+            stream_mode="values",
+        ):
+            final = step
     return final or {}
 
 
 def run_mcp_resume(thread_id: str, vault_path: str, approved_topics: list, user_profile: dict) -> dict:
-    checkpointer = _get_checkpointer(vault_path)
-    graph        = build_graph(checkpointer, interrupt_at_review=True)
-    thread_cfg   = {"configurable": {"thread_id": thread_id}}
-
-    graph.update_state(
-        thread_cfg,
-        {"approved_topics": approved_topics, "user_profile": user_profile, "status": "reviewed"},
-        as_node="human_review",
-    )
-
-    final = None
-    for step in graph.stream(None, thread_cfg, stream_mode="values"):
-        final = step
+    thread_cfg = {"configurable": {"thread_id": thread_id}}
+    with _checkpointer(vault_path) as cp:
+        graph = _build_graph(cp, interrupt_at_review=True)
+        graph.update_state(
+            thread_cfg,
+            {"approved_topics": approved_topics, "user_profile": user_profile, "status": "reviewed"},
+            as_node="human_review",
+        )
+        final = None
+        for step in graph.stream(None, thread_cfg, stream_mode="values"):
+            final = step
     return final or {}
 
 
 def get_checkpoint_state(thread_id: str, vault_path: str) -> dict:
-    checkpointer = _get_checkpointer(vault_path)
-    graph        = build_graph(checkpointer)
-    snapshot     = graph.get_state({"configurable": {"thread_id": thread_id}})
+    with _checkpointer(vault_path) as cp:
+        graph    = _build_graph(cp)
+        snapshot = graph.get_state({"configurable": {"thread_id": thread_id}})
     return snapshot.values if snapshot else {}
