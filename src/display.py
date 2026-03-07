@@ -29,12 +29,12 @@ except ImportError:
 def print_banner():
     if HAS_RICH:
         text = Text()
-        text.append("  StudyVault  ", style="bold white on dark_blue")
+        text.append("  Pliot  ", style="bold white on dark_blue")
         text.append("  PDF → Obsidian Study Plan Generator", style="dim")
         console.print(Panel(text, border_style="blue", padding=(0, 2)))
     else:
         print("\n" + "=" * 60)
-        print("  StudyVault — PDF → Obsidian Study Plan Generator")
+        print("  Pilot — PDF → Obsidian Study Plan Generator")
         print("=" * 60)
 
 

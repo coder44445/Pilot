@@ -11,7 +11,7 @@ KEY BEHAVIOURS:
   5. After the full graph completes, a summary shows what succeeded/failed
 
 Checkpoint DB location:
-  {vault_path}/.studyvault_checkpoints.db
+  {vault_path}/.Pilot_checkpoints.db
 
 To force a fresh run (ignore all checkpoints):
   delete the .db file or pass force_restart=True to run_cli()
@@ -56,9 +56,9 @@ def _get_checkpointer(vault_path: str):
     """
     try:
         from langgraph.checkpoint.sqlite import SqliteSaver
-        db_path = Path(vault_path) / ".studyvault_checkpoints.db"
+        db_path = Path(vault_path) / ".pliot_checkpoints.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        return SqliteSaver.from_conn_string(str(db_path))
+        return SqliteSaver.from_conn_string(str(db_path)).__enter__()
     except ImportError:
         console.print(
             "[yellow]  langgraph-checkpoint-sqlite not installed — "
@@ -193,12 +193,13 @@ def run_cli(initial_state: dict, force_restart: bool = False) -> dict:
 
     # Check if there's an existing checkpoint for this run
     existing = graph.get_state(thread_cfg)
+
     if existing and existing.values and not force_restart:
         status = existing.values.get("status", "unknown")
         if status == "complete":
             console.print(
                 f"\n[green]✓ This vault was already completed.[/green]"
-                f"\n[dim]  Delete {vault_path}/.studyvault_checkpoints.db to regenerate.[/dim]"
+                f"\n[dim]  Delete {vault_path}/.pilot_checkpoints.db to regenerate.[/dim]"
             )
             return existing.values
         console.print(

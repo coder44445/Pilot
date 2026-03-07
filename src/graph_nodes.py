@@ -1,8 +1,8 @@
 """
-LangGraph nodes for the StudyVault pipeline.
+LangGraph nodes for the Pliot pipeline.
 
 Each node:
-  - Takes the full StudyVaultState
+  - Takes the full PilotState
   - Returns a PARTIAL dict (only the keys it updates)
   - Is a plain Python function — LangGraph handles the wiring
 

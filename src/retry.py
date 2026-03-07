@@ -15,7 +15,7 @@ Which:
 
 Checkpointing:
   Uses SqliteSaver so state survives process restarts.
-  The DB is written to {vault_path}/.studyvault_checkpoint.db
+  The DB is written to {vault_path}/.pilot_checkpoint.db
   On retry run, already-completed nodes are skipped automatically.
 """
 

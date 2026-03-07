@@ -1,5 +1,5 @@
 """
-StudyVault MCP Server
+Pilot MCP Server
 
 Tools:
   start_study_plan(pdf_path, vault_path, ...)  → extract topics, pause for review
@@ -16,9 +16,9 @@ swap MemorySaver for SqliteSaver and state persists across restarts.
 Add to Claude Desktop config:
   {
     "mcpServers": {
-      "studyvault": {
+      "pilot": {
         "command": "python",
-        "args": ["/path/to/study-vault-gen/mcp_server.py"]
+        "args": ["../mcp_server.py"]
       }
     }
   }
@@ -49,7 +49,7 @@ def _get_checkpoint(thread_id: str) -> Optional[dict]:
     return snapshot.values if snapshot else None
 
 
-# ── Tool: start_study_plan ────────────────────────────────────────────────── #
+# Tool: start_study_plan 
 
 @mcp.tool()
 def start_study_plan(
@@ -141,7 +141,7 @@ def start_study_plan(
     }, indent=2)
 
 
-# ── Tool: approve_topics ──────────────────────────────────────────────────── #
+# Tool: approve_topics
 
 @mcp.tool()
 def approve_topics(
@@ -213,7 +213,7 @@ def approve_topics(
     }, indent=2)
 
 
-# ── Tool: get_status ──────────────────────────────────────────────────────── #
+# Tool: get_status
 
 @mcp.tool()
 def get_status(thread_id: str) -> str:
@@ -232,7 +232,7 @@ def get_status(thread_id: str) -> str:
     }, indent=2)
 
 
-# ── Resource: vault://topics/{thread_id} ──────────────────────────────────── #
+# Resource: vault://topics/{thread_id}
 
 @mcp.resource("vault://topics/{thread_id}")
 def resource_topics(thread_id: str) -> str:

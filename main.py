@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-StudyVault CLI
+Pilot CLI
 
 Run once to start. If interrupted or crashed, run the exact same command again
 to resume from where it stopped — PDF is never re-read, completed nodes are skipped.
@@ -46,7 +46,7 @@ def main():
         print_error(f"PDF not found: {pdf_path}")
         sys.exit(1)
 
-    # ── LLM provider ──────────────────────────────────────────────────────── #
+    # LLM provider
     provider = args.llm
     if not provider:
         console.print("\n[bold cyan]Which LLM?[/bold cyan]")
@@ -67,9 +67,9 @@ def main():
     )
     client.validate()
 
-    # ── Check for existing checkpoint ─────────────────────────────────────── #
+    # Check for existing checkpoint
     thread_id = make_thread_id(str(pdf_path), str(vault_path))
-    db_path   = vault_path / ".studyvault_checkpoints.db"
+    db_path   = vault_path / ".pilot_checkpoints.db"
 
     if db_path.exists() and not args.restart:
         console.print(
@@ -92,7 +92,7 @@ def main():
         final = run_cli(state, force_restart=False)
 
     else:
-        # ── Fresh start ───────────────────────────────────────────────────── #
+        # Fresh start
         console.print(f"\n[bold]📄 Reading:[/bold] {pdf_path.name}")
         pdf_text, metadata = extract_pdf_text(pdf_path)
         console.print(
@@ -122,7 +122,7 @@ def main():
 
         final = run_cli(state, force_restart=args.restart)
 
-    # ── Done ──────────────────────────────────────────────────────────────── #
+    # Done
     if not final:
         print_error("Pipeline produced no output.")
         sys.exit(1)

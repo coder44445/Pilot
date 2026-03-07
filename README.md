@@ -185,7 +185,7 @@ MyVault/
 → Just rerun the same command. Progress is saved automatically.
 
 **Want to start over from scratch**
-→ Add `--restart` to your command, or delete `{vault}/.studyvault_checkpoints.db`.
+→ Add `--restart` to your command, or delete `{vault}/.pilot_checkpoints.db`.
 
 ---
 
