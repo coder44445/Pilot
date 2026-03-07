@@ -47,7 +47,7 @@ def _make_llm(state: dict) -> LLMClient:
     )
 
 
-# ── Node 1: extract_pdf ────────────────────────────────────────────────────── #
+# Node 1: extract_pdf
 
 def node_extract_pdf(state: dict) -> dict:
     """Read PDF from disk, extract text and metadata."""
@@ -63,7 +63,7 @@ def node_extract_pdf(state: dict) -> dict:
         return {"error": str(e), "status": "failed"}
 
 
-# ── Node 2: extract_chunk ─────────────────────────────────────────────────── #
+# Node 2: extract_chunk
 # Called once PER CHUNK via LangGraph Send — runs in parallel
 
 def node_extract_chunk(state: dict) -> dict:
@@ -104,7 +104,7 @@ def node_extract_chunk(state: dict) -> dict:
     }
 
 
-# ── Node 3: dedup_topics ───────────────────────────────────────────────────── #
+# Node 3: dedup_topics
 
 def node_dedup_topics(state: dict) -> dict:
     """Deduplicate raw topics from all chunks. LLM merge if > 20."""
@@ -158,7 +158,7 @@ def node_dedup_topics(state: dict) -> dict:
     }
 
 
-# ── Node 4: human_review (INTERRUPT point) ────────────────────────────────── #
+# Node 4: human_review (INTERRUPT point)
 
 def node_human_review(state: dict) -> dict:
     """
@@ -190,7 +190,7 @@ def node_human_review(state: dict) -> dict:
     }
 
 
-# ── Node 5: build_schedule ────────────────────────────────────────────────── #
+# Node 5: build_schedule
 
 def node_build_schedule(state: dict) -> dict:
     """Generate day-by-day schedule from approved topics."""
@@ -230,7 +230,7 @@ def node_build_schedule(state: dict) -> dict:
         return {"error": str(e), "status": "failed"}
 
 
-# ── Node 6: write_note ────────────────────────────────────────────────────── #
+# Node 6: write_note 
 # Called once PER TOPIC via LangGraph Send — runs in parallel
 
 def node_write_note(state: dict) -> dict:
@@ -293,7 +293,7 @@ def node_write_note(state: dict) -> dict:
     return {"notes_map": {tid: notes}}
 
 
-# ── Node 7: write_vault ───────────────────────────────────────────────────── #
+# Node 7: write_vault
 
 def node_write_vault(state: dict) -> dict:
     """Write all Obsidian markdown files."""
