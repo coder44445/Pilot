@@ -1,4 +1,4 @@
-# StudyVault dependencies
+# Pilot dependencies
 
 # PDF extraction (install at least one)
 pymupdf>=1.23.0           # Recommended
