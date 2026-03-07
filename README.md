@@ -1,6 +1,39 @@
-# 📚 Pilot
+# Pilot
 
 > Turn any PDF into a personalized, day-by-day Obsidian study vault — in one command.
+
+---
+
+## Before You Start
+
+Pilot needs write access to the folder where your vault will be created.
+If the folder doesn't exist yet, Pilot will create it — but only if you have permission to write there.
+
+**Windows**
+
+Right-click the parent folder (e.g. `C:\Users\YourName\`) → Properties → Security → Edit → give your user **Full Control**.
+
+Or use a folder inside your user directory where you already have write access:
+```
+C:\Users\YourName\Documents\MyVault
+```
+Avoid paths like `C:\Program Files\` or `C:\Windows\` — Windows blocks writes there.
+
+**macOS / Linux**
+
+```bash
+# Check permissions
+ls -ld /path/to/your/vault
+
+# Fix if needed
+chmod u+w /path/to/your/vault
+
+# If the folder doesn't exist yet, create it first
+mkdir -p /path/to/your/vault
+```
+
+**Running as admin / sudo — don't.**
+It will work, but files created as root can cause permission issues later when Obsidian (running as your normal user) tries to read them. Fix the folder permissions instead.
 
 ---
 
@@ -10,8 +43,8 @@
 2. **Asks you 7 questions** — time available, skill level, hard/easy topics, goal
 3. **Calls an LLM** — OpenAI or local Ollama (your choice)
 4. **Writes an Obsidian vault** with:
-   - `📚 Index.md` — master hub linking everything
-   - `Days/Day 01 - ...md` through `Day N` — daily study plans with tasks
+   - `_Index.md` — master hub linking everything
+   - `Days/Day 01 - ....md` through `Day N` — daily study plans with tasks
    - `Notes/Topic Name.md` — deep notes per topic with examples, quizzes, TL;DRs
    - `Meta/Progress Tracker.md` — checkbox-based progress tracker
    - Full `[[wiki-links]]` between topics for the graph view
@@ -48,38 +81,47 @@ export OPENAI_API_KEY=sk-...
 **Option B — Ollama (local, free):**
 ```bash
 # Install Ollama from https://ollama.com
+ollama pull qwen3:4b       # Recommended for most machines
+ollama pull qwen3:0.6b     # If you're on a machine
 ollama serve
-ollama pull llama3.1       # Or any other model
 ```
 
 ---
 
 ## Usage
 
-### Basic usage
+### Basic
 
 ```bash
-python main.py --pdf path/to/your/book.pdf --vault ~/Documents/ObsidianVault
+python main.py --pdf path/to/book.pdf --vault ~/Documents/MyVault
 ```
 
-### Specify LLM upfront (skips the prompt)
+### Specify LLM upfront
 
 ```bash
 # OpenAI
-python main.py --pdf book.pdf --vault ~/vault --llm openai
+python main.py --pdf book.pdf --vault ~/vault --llm openai --model gpt-4o
 
-# Ollama with a specific model
-python main.py --pdf book.pdf --vault ~/vault --llm ollama --model llama3.2
+# Ollama
+python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b
 ```
 
-### Full example
+### Resume after a crash or interruption
+
+Just run the exact same command again. Pilot saves progress after every step — completed nodes are skipped automatically.
 
 ```bash
-python main.py \
-  --pdf "Python Crash Course.pdf" \
-  --vault ~/Documents/MyVault \
-  --llm openai \
-  --model gpt-4o
+# First run (interrupted halfway)
+python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b
+
+# Rerun — resumes from where it stopped, PDF is not re-read
+python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b
+```
+
+### Force a fresh start
+
+```bash
+python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b --restart
 ```
 
 ---
@@ -89,11 +131,10 @@ python main.py \
 ```
 MyVault/
 └── Python Crash Course/
-    ├── 📚 Index.md              ← Start here
+    ├── _Index.md                          ← Start here
     ├── Days/
-    │   ├── Day 01 - Orientation & Overview.md
+    │   ├── Day 01 - Orientation.md
     │   ├── Day 02 - Variables and Data Types.md
-    │   ├── Day 03 - Control Flow.md
     │   ├── Day 07 - Review Day.md
     │   └── ...
     ├── Notes/
@@ -108,15 +149,13 @@ MyVault/
 
 ---
 
-## Personalization Logic
+## Personalization
 
-The tool asks you about:
-
-| Question | Effect on plan |
-|----------|---------------|
-| Hard topics | Gets 20-40% more time, deeper notes, more examples |
-| Easy topics | Goes faster but includes practice exercises |
-| Goal (exam/project/deep/quick) | Changes note depth and activity types |
+| Question | Effect |
+|----------|--------|
+| Hard topics | More time, deeper notes, more examples |
+| Easy topics | Faster pace, adds practice exercises |
+| Goal (exam / project / deep / quick) | Changes note depth and activity types |
 | Skill level | Calibrates terminology and assumed prior knowledge |
 | Learning style | Theory-first vs examples-first structure |
 
@@ -124,20 +163,29 @@ The tool asks you about:
 
 ## Obsidian Tips
 
-1. **Graph view** — Open it (Ctrl+G) to see topic connections via `[[wiki-links]]`
-2. **Daily notes** — Use the day files as your daily note template
-3. **Dataview plugin** — Query your progress: `TABLE status FROM "Days"`
-4. **Checkboxes** — Check off activities as you complete them
+- **Graph view** (Ctrl+G) — see topic connections via `[[wiki-links]]`
+- **Dataview plugin** — query your progress: `TABLE status FROM "Days"`
+- **Checkboxes** — check off activities in the day files as you complete them
 
 ---
 
-## Roadmap
+## Troubleshooting
 
-- [ ] URL/website scraping → same pipeline
-- [ ] YouTube transcript support
-- [ ] Spaced repetition flashcard export (Anki)
-- [ ] Re-run on the same vault to add new topics
-- [ ] Obsidian plugin version (no CLI needed)
+**"Permission denied" when writing files**
+→ See the [Before You Start](#before-you-start) section above.
+
+**"Cannot reach Ollama"**
+→ Make sure `ollama serve` is running in a separate terminal.
+
+**Ollama truncating input / slow responses**
+→ Use a model with at least 4k context. `qwen3:4b` is the recommended minimum.
+→ Check that `ollama serve` shows no errors in its terminal.
+
+**Pipeline crashed halfway**
+→ Just rerun the same command. Progress is saved automatically.
+
+**Want to start over from scratch**
+→ Add `--restart` to your command, or delete `{vault}/.studyvault_checkpoints.db`.
 
 ---
 
@@ -145,5 +193,16 @@ The tool asks you about:
 
 - Python 3.10+
 - `pymupdf` or `pdfplumber`
+- `langgraph`, `langgraph-checkpoint-sqlite`
 - `openai` (if using OpenAI) or Ollama running locally
-- `rich` (optional, for pretty terminal output)
+- `rich`
+
+---
+
+## Roadmap
+
+- [ ] URL / website scraping → same pipeline
+- [ ] YouTube transcript support
+- [ ] Anki flashcard export from quiz sections
+- [ ] Re-run on existing vault to add new topics
+- [ ] Obsidian plugin (no CLI needed)
