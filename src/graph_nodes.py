@@ -1,5 +1,5 @@
 """
-LangGraph nodes for the Pliot pipeline.
+LangGraph nodes for the Pilot pipeline.
 
 Each node:
   - Takes the full PilotState
