@@ -26,11 +26,17 @@ def node_write_vault(state: dict) -> dict:
         "notes_map":   state.get("notes_map", {}),
     }
 
+    # Check if in merge mode
+    merge_mode = state.get("_merge_mode", False)
+    existing_ids = state.get("_existing_topic_ids", [])
+
     written = _write_vault(
         Path(state["vault_path"]),
         study_plan,
         state.get("user_profile", {}),
         state.get("pdf_metadata", {}),
+        merge_mode=merge_mode,
+        existing_topic_ids=existing_ids,
     )
 
     if not written:

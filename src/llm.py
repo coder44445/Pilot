@@ -67,8 +67,8 @@ class LLMClient:
             except Exception:
                 raise ConnectionError(
                     f"Cannot reach Ollama at {self.ollama_url}\n"
-                    "  → Make sure Ollama is running:   ollama serve\n"
-                    f"  → And the model is pulled:      ollama pull {self.model}"
+                    "  - Make sure Ollama is running:   ollama serve\n"
+                    f"  - And the model is pulled:      ollama pull {self.model}"
                 )
 
     # ------------------------------------------------------------------ #

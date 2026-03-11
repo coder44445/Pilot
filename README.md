@@ -96,6 +96,16 @@ ollama serve
 python main.py --pdf path/to/book.pdf --vault ~/Documents/MyVault
 ```
 
+### Using URLs
+
+Instead of a PDF, provide a URL to extract content from:
+
+```bash
+python main.py --url https://example.com/article --vault ~/Documents/MyVault
+```
+
+Requires: `pip install requests beautifulsoup4`
+
 ### Specify LLM upfront
 
 ```bash
@@ -124,6 +134,117 @@ python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b
 python main.py --pdf book.pdf --vault ~/vault --llm ollama --model qwen3:4b --restart
 ```
 
+### Add new topics to an existing vault
+
+```bash
+# Generate new topics from a different source and merge them into your vault
+# Preserves all your existing notes and just adds new topics
+python main.py --pdf new_book.pdf --vault ~/vault --merge
+```
+
+This is useful for:
+- Adding supplementary material to your existing vault
+- Covering more topics without losing your manual edits
+- Building a comprehensive study guide from multiple sources
+
+---
+
+## Docker Setup
+
+### Quick Start (All-in-One)
+
+If you have Docker and Docker Compose installed:
+
+```bash
+# 1. Place your PDFs in ./input/
+cp path/to/your/book.pdf ./input/
+
+# 2. Run the full stack (Pilot + Ollama)
+docker-compose up --build
+
+# 3. In another terminal, run Pilot
+docker-compose exec pilot python main.py --pdf /data/input/book.pdf --vault /data/output/MyVault
+```
+
+Generated vaults appear in `./output/` on your machine.
+
+### Using an Existing Ollama Instance
+
+If you already have Ollama running (not in Docker):
+
+1. Update `docker-compose.yml`:
+   ```yaml
+   environment:
+     OLLAMA_HOST: "http://host.docker.internal:11434"  # macOS/Windows
+     # or
+     OLLAMA_HOST: "http://172.17.0.1:11434"  # Linux
+   ```
+
+2. Run just the Pilot service:
+   ```bash
+   docker run -it \
+     --rm \
+     -v ./input:/data/input \
+     -v ./output:/data/output \
+     -v ./pilot.config.yml:/app/pilot.config.yml \
+     -e OLLAMA_HOST=http://host.docker.internal:11434 \
+     pilot-app \
+     python main.py --pdf /data/input/book.pdf --vault /data/output/MyVault
+   ```
+
+### Setup Instructions
+
+1. **Install Docker:**
+   - [Docker Desktop](https://www.docker.com/products/docker-desktop) (macOS/Windows)
+   - [Docker Engine](https://docs.docker.com/engine/install/) (Linux)
+
+2. **Organize your files:**
+   ```bash
+   mkdir input output
+   cp your_book.pdf input/
+   ```
+
+3. **Configure pilot.config.yml** (if needed):
+   ```yaml
+   llm:
+     provider: ollama
+     model: qwen3:4b
+     ollama_url: http://ollama:11434
+   ```
+
+4. **Optional: Pull Ollama models in advance:**
+   ```bash
+   # Download the model once (speeds up first run)
+   docker-compose run ollama ollama pull qwen3:4b
+   ```
+
+5. **Run:**
+   ```bash
+   docker-compose up
+   # Then in another terminal:
+   docker-compose exec pilot python main.py --pdf /data/input/book.pdf --vault /data/output/MyVault
+   ```
+
+### Troubleshooting Docker
+
+**Port 11434 already in use:**
+```yaml
+# In docker-compose.yml, change the Ollama port:
+ports:
+  - "11435:11434"  # Use 11435 instead
+```
+
+**Ollama service fails to start:**
+- Check logs: `docker-compose logs ollama`
+- Ensure at least 4GB RAM available for Docker
+- On Windows/macOS, increase Docker's memory in Docker Desktop settings
+
+**Permission errors in output folder:**
+```bash
+# Fix ownership
+sudo chown -R $USER:$USER output/
+```
+
 ---
 
 ## What the Vault Looks Like
@@ -142,6 +263,8 @@ MyVault/
     │   ├── Functions.md
     │   ├── Classes and OOP.md
     │   └── ...
+    ├── .anki/
+    │   └── Flashcards.csv                 ← Anki import-ready quizzes
     └── Meta/
         ├── Progress Tracker.md
         └── Profile.md
@@ -201,8 +324,8 @@ MyVault/
 
 ## Roadmap
 
-- [ ] URL / website scraping → same pipeline
+- [x] URL / website scraping → same pipeline ✅
 - [ ] YouTube transcript support
-- [ ] Anki flashcard export from quiz sections
-- [ ] Re-run on existing vault to add new topics
+- [x] Anki flashcard export from quiz sections ✅
+- [x] Re-run on existing vault to add new topics ✅
 - [ ] Obsidian plugin (no CLI needed)

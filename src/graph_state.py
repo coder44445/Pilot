@@ -76,6 +76,11 @@ class PipelineState(InputConfig):
     # Pipeline control
     status:          str
     _mcp_mode:       bool
+    
+    # Merge mode (for adding topics to existing vaults)
+    _merge_mode:     bool
+    _existing_topic_ids: list
+    _new_topic_ids:  list
 
 
 def default_state(
@@ -110,4 +115,7 @@ def default_state(
         "retry_counts":   {},
         "status":         STATUS_STARTING,
         "_mcp_mode":      False,
+        "_merge_mode":    False,
+        "_existing_topic_ids": [],
+        "_new_topic_ids":  [],
     }

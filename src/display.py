@@ -3,6 +3,7 @@ Terminal display utilities using the Rich library.
 Falls back to plain print if Rich isn't installed.
 """
 
+import sys
 from pathlib import Path
 from typing import List
 
@@ -10,7 +11,8 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.text import Text
-    console = Console()
+    # On Windows, use legacy mode to avoid encoding issues with Unicode box characters
+    console = Console(legacy_windows=True) if sys.platform == "win32" else Console()
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -27,14 +29,20 @@ except ImportError:
 
 
 def print_banner():
-    if HAS_RICH:
-        text = Text()
-        text.append("  Pilot  ", style="bold white on dark_blue")
-        text.append("  PDF → Obsidian Study Plan Generator", style="dim")
-        console.print(Panel(text, border_style="blue", padding=(0, 2)))
-    else:
+    try:
+        if HAS_RICH:
+            text = Text()
+            text.append("  Pilot  ", style="bold white on dark_blue")
+            text.append("  PDF to Obsidian Study Plan Generator", style="dim")
+            console.print(Panel(text, border_style="blue", padding=(0, 2)))
+        else:
+            print("\n" + "=" * 60)
+            print("  Pilot — PDF to Obsidian Study Plan Generator")
+            print("=" * 60)
+    except Exception:
+        # Fallback for Windows encoding issues
         print("\n" + "=" * 60)
-        print("  Pilot — PDF → Obsidian Study Plan Generator")
+        print("  Pilot — PDF to Obsidian Study Plan Generator")
         print("=" * 60)
 
 

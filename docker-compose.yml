@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pilot-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      # Optional: Set GPU acceleration parameters
+      # OLLAMA_GPU: '1'  # Enable GPU if available
+      OLLAMA_HOST: "0.0.0.0:11434"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  pilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pilot-app
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      # Mount input directory for PDF files
+      - ./input:/data/input:ro
+      # Mount output directory for generated vaults
+      - ./output:/data/output
+      # Mount config file
+      - ./pilot.config.yml:/app/pilot.config.yml:ro
+    environment:
+      # Point to Ollama service in the Docker network
+      OLLAMA_HOST: "http://ollama:11434"
+    networks:
+      - pilot-network
+    # Keep container running if you want to execute commands interactively
+    stdin_open: true
+    tty: true
+    # Uncomment to run a command on startup (example):
+    # command: ["--pdf", "/data/input/example.pdf", "--vault", "/data/output/vault"]
+
+  # Optional: Jupyter notebook server for interactive exploration
+  # jupyter:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: pilot-jupyter
+  #   depends_on:
+  #     - ollama
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - ./:/app
+  #   command: jupyter notebook --ip=0.0.0.0 --allow-root --no-browser
+  #   networks:
+  #     - pilot-network
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  pilot-network:
+    driver: bridge

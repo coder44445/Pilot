@@ -126,9 +126,9 @@ def print_config_summary(console) -> None:
     source  = str(_CONFIG_FILE) if _CONFIG_FILE.exists() else "built-in defaults"
 
     console.print(f"\n[dim]Config: {source}[/dim]")
+    url_part = f" ({llm['ollama_url']})" if llm['provider'] == 'ollama' else ""
     console.print(
-        f"[dim]  LLM: {llm['provider']} / {llm['model']} "
-        f"({'  ' + llm['ollama_url'] if llm['provider'] == 'ollama' else ''})[/dim]"
+        f"[dim]  LLM: {llm['provider']} / {llm['model']}{url_part}[/dim]"
     )
     console.print(
         f"[dim]  Defaults: {profile['total_days']}d × {profile['hours_per_day']}h/d, "

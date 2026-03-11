@@ -149,12 +149,19 @@ def write_vault(
     study_plan:   dict,
     user_profile: dict,
     pdf_metadata: dict,
+    merge_mode:   bool = False,
+    existing_topic_ids: List[str] = None,
 ) -> List[str]:
     """
     Write all vault markdown files.
     Returns list of successfully written relative paths.
     Continues writing even if individual files fail.
+    
+    If merge_mode=True, preserves existing note files and only writes new topics.
     """
+    if existing_topic_ids is None:
+        existing_topic_ids = []
+    
     subject    = sanitize_filename(study_plan.get("subject", "Study Plan"))
     base       = vault_path / subject
     start_date = datetime.today()
@@ -176,6 +183,13 @@ def write_vault(
     for topic in study_plan.get("topics", []):
         tid   = topic["id"]
         fname = sanitize_filename(topic["title"])
+        
+        # In merge mode, skip existing topics (preserve user edits)
+        if merge_mode and tid in existing_topic_ids:
+            console.print(f"  [dim]↩ {topic['title']} already exists — skipping[/dim]")
+            topic_file_map[tid] = fname
+            continue
+        
         notes = study_plan.get("notes_map", {}).get(
             tid, f"## {topic['title']}\n\nNotes coming soon."
         )
@@ -391,5 +405,22 @@ def write_vault(
         console.print(f"\n  [yellow]Warning: {len(failed)} file(s) could not be written:[/yellow]")
         for f in failed[:10]:
             console.print(f"    [dim]- {f}[/dim]")
+
+    # ── Anki export ────────────────────────────────────────────────────────── #
+    try:
+        from src.anki_exporter import export_anki_deck
+        
+        if study_plan.get("notes_map") and user_profile.get("include_quizzes"):
+            anki_path = export_anki_deck(
+                study_plan["notes_map"],
+                study_plan.get("topic_map", {}),
+                base,
+                deck_name=study_plan.get("subject", "Study Plan")
+            )
+            if anki_path:
+                console.print(f"  [dim]📇 Anki flashcards exported[/dim]")
+                written.append(f"{subject}/.anki/Flashcards.csv")
+    except Exception as e:
+        console.print(f"  [dim yellow]⚠  Anki export skipped: {e}[/dim yellow]")
 
     return written
