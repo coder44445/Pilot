@@ -11,7 +11,7 @@ Features:
 
 from typing import Optional
 from src.display import console
-from src.rag_engine import RAGEngine
+from .rag import RAGEngine
 from src.llm import LLMClient
 import json
 

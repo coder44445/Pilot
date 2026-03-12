@@ -27,8 +27,8 @@ import json
 from pathlib import Path
 
 from src.llm import LLMClient
-from src.pdf_extractor import extract_pdf_text
-from src.vault_writer import write_vault as _write_vault
+from src.extractors import extract_pdf_text
+from src.writers import write_vault as _write_vault
 from src.display import console
 from src.planner import (
     EXTRACTION_SYSTEM, EXTRACTION_PROMPT,

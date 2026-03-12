@@ -16,7 +16,7 @@ from pathlib import Path
 from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 
-from src.graph_state import PipelineState, STATUS_AWAITING_REVIEW
+from .graph_state import PipelineState, STATUS_AWAITING_REVIEW
 from src.utils.chunking import chunk_text
 from src.nodes import (
     node_extract_pdf,

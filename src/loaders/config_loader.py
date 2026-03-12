@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 # Project root = directory containing this src/ folder
-_ROOT = Path(__file__).parent.parent
-_CONFIG_FILE = _ROOT / "pilot.config.yml"
+_ROOT = Path(__file__).parent.parent.parent
+_CONFIG_FILE = _ROOT / "config" / "pilot.config.yml"
 
 # Defaults (used when key is missing from config)
 _LLM_DEFAULTS = {

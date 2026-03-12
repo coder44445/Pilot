@@ -33,9 +33,9 @@ try:
 except ImportError:
     raise ImportError("Run: pip install mcp")
 
-from src.graph import run_mcp_start, run_mcp_resume, get_checkpoint_state
-from src.graph_state import default_state
-from src.config_loader import load_llm_config, load_default_profile, print_config_summary
+from src.core.graph import run_mcp_start, run_mcp_resume, get_checkpoint_state
+from src.core import default_state
+from src.loaders import load_llm_config, load_default_profile, print_config_summary
 from src.display import console
 
 mcp = FastMCP("Pilot")

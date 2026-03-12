@@ -6,7 +6,7 @@ MCP mode:  sets status=awaiting_review and exits; MCP client calls
            approve_topics() to inject approved_topics and resume
 """
 
-from src.config import UserProfile
+from src.loaders import UserProfile
 from src.display import console
 from src.interactive import InteractiveSession
 from src.llm import LLMClient
