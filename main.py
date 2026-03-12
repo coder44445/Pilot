@@ -47,6 +47,12 @@ def main():
                         help="Ignore saved checkpoints and start over")
     parser.add_argument("--merge",      action="store_true",
                         help="Add new topics to existing vault without overwriting notes")
+    parser.add_argument("--interactive", action="store_true",
+                        help="Enable advanced interactive topic review with RAG and corrections")
+    parser.add_argument("--no-rag",     action="store_true",
+                        help="Disable RAG features in interactive mode")
+    parser.add_argument("--skip-corrections", action="store_true",
+                        help="Skip automatic error detection and correction suggestions")
     args = parser.parse_args()
 
     # Validate input source
@@ -123,6 +129,9 @@ def main():
             llm_model=   llm_cfg.resolved_model(),
             ollama_url=  llm_cfg.ollama_url,
             user_profile=recovered_profile,
+            interactive_mode=args.interactive,
+            enable_rag=not args.no_rag,
+            enable_corrections=not args.skip_corrections,
         )
         final = run_cli(state, force_restart=False)
 
@@ -143,6 +152,9 @@ def main():
             llm_model=   llm_cfg.resolved_model(),
             ollama_url=  llm_cfg.ollama_url,
             user_profile=profile.to_dict(),
+            interactive_mode=args.interactive,
+            enable_rag=not args.no_rag,
+            enable_corrections=not args.skip_corrections,
         )
         state["pdf_text"]     = text
         state["pdf_metadata"] = metadata

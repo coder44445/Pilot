@@ -77,6 +77,11 @@ class PipelineState(InputConfig):
     status:          str
     _mcp_mode:       bool
     
+    # Interactive mode (for advanced review, RAG, and corrections)
+    _interactive_mode:    bool
+    _enable_rag:          bool
+    _enable_corrections:  bool
+    
     # Merge mode (for adding topics to existing vaults)
     _merge_mode:     bool
     _existing_topic_ids: list
@@ -90,6 +95,9 @@ def default_state(
     llm_model:    str,
     ollama_url:   str,
     user_profile: dict,
+    interactive_mode: bool = False,
+    enable_rag: bool = True,
+    enable_corrections: bool = True,
 ) -> dict:
     return {
         "pdf_path":       pdf_path,
@@ -115,6 +123,9 @@ def default_state(
         "retry_counts":   {},
         "status":         STATUS_STARTING,
         "_mcp_mode":      False,
+        "_interactive_mode":    interactive_mode,
+        "_enable_rag":          enable_rag,
+        "_enable_corrections":  enable_corrections,
         "_merge_mode":    False,
         "_existing_topic_ids": [],
         "_new_topic_ids":  [],
