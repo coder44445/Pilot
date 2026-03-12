@@ -6,7 +6,7 @@ MCP mode:  sets status=awaiting_review and exits; MCP client calls
            approve_topics() to inject approved_topics and resume
 """
 
-from src.loaders import UserProfile
+from pydantic import NonNegativeFloat
 from src.display import console
 from src.interactive import InteractiveSession
 from src.llm import LLMClient
@@ -20,8 +20,6 @@ def node_human_review(state: dict) -> dict:
     user_profile = state.get("user_profile", {})
     pdf_text     = state.get("pdf_text", "")
     is_mcp       = state.get("_mcp_mode", False)
-    enable_rag   = state.get("_enable_rag", True)
-    enable_corrections = state.get("_enable_corrections", True)
 
     if is_mcp:
         # MCP path: signal awaiting_review, graph pauses here.
@@ -34,7 +32,7 @@ def node_human_review(state: dict) -> dict:
     # CLI path: advanced interactive interface
     llm_client = _get_llm_client(state)
     approved, updated_profile, should_continue = _interactive_review(
-        topics, user_profile, pdf_text, llm_client, enable_rag, enable_corrections
+        topics, user_profile, pdf_text, llm_client
     )
 
     if should_continue:
@@ -52,7 +50,7 @@ def node_human_review(state: dict) -> dict:
         }
 
 
-def _get_llm_client(state: dict) -> LLMClient:
+def _get_llm_client(state: dict) -> LLMClient | None:
     """Get an LLM client from state for interactive operations."""
     try:
         llm_provider = state.get("llm_provider", "ollama")
@@ -74,9 +72,7 @@ def _interactive_review(
     topics: list,
     user_profile: dict,
     pdf_text: str,
-    llm_client: LLMClient = None,
-    enable_rag: bool = True,
-    enable_corrections: bool = True,
+    llm_client: LLMClient | None = None
 ) -> tuple[list, dict, bool]:
     """
     Run advanced interactive review with RAG and error correction.
@@ -88,9 +84,34 @@ def _interactive_review(
         pdf_text=pdf_text,
         topics=topics,
         user_profile=user_profile,
-        llm_client=llm_client,
-        enable_rag=enable_rag,
-        enable_corrections=enable_corrections,
+        llm_client=llm_client
     )
     
     return session.run_interactive_loop()
+
+
+def _mark_hard_easy(topics: list, user_profile: dict) -> dict:
+    profile = dict(user_profile)
+
+    console.print("\n[bold red]HARD[/bold red] topic numbers (comma-sep, Enter = skip):")
+    hard = _pick_titles(input("Hard: ").strip(), topics)
+
+    console.print("[bold green]EASY[/bold green] topic numbers (comma-sep, Enter = skip):")
+    easy = _pick_titles(input("Easy: ").strip(), topics)
+
+    if hard:
+        profile["hard_topics"] = list(set(profile.get("hard_topics", []) + hard))
+        console.print(f"  [red]Hard:[/red] {', '.join(hard)}")
+    if easy:
+        profile["easy_topics"] = list(set(profile.get("easy_topics", []) + easy))
+        console.print(f"  [green]Easy:[/green] {', '.join(easy)}")
+
+    return profile
+
+
+def _pick_titles(raw: str, topics: list) -> list:
+    return [
+        topics[int(p.strip()) - 1]["title"]
+        for p in raw.split(",")
+        if p.strip().isdigit() and 0 < int(p.strip()) <= len(topics)
+    ]
