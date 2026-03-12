@@ -5,9 +5,7 @@ This module provides the public APIs and interfaces for the interactive
 components, RAG engine, and error correction features.
 """
 
-# ============================================================================
 # RAGEngine API
-# ============================================================================
 
 class RAGEngine:
     """
@@ -95,9 +93,7 @@ class RAGEngine:
         pass
 
 
-# ============================================================================
 # InteractiveSession API
-# ============================================================================
 
 class InteractiveSession:
     """
@@ -237,9 +233,7 @@ class InteractiveSession:
         pass
 
 
-# ============================================================================
 # Integration with Graph Pipeline
-# ============================================================================
 
 def node_human_review(state: dict) -> dict:
     """
@@ -270,9 +264,7 @@ def node_human_review(state: dict) -> dict:
     pass
 
 
-# ============================================================================
 # Configuration
-# ============================================================================
 
 """
 Interactive mode configuration in src/interactive_config.py
@@ -290,9 +282,7 @@ MIN_DESCRIPTION_LENGTH = 20               # Minimum description chars
 MAX_DUPLICATE_DISTANCE = 0.8              # Similarity threshold
 """
 
-# ============================================================================
 # Command-line Usage
-# ============================================================================
 
 """
 Enable interactive mode when running Pilot:
@@ -310,11 +300,10 @@ Enable interactive mode when running Pilot:
     python main.py --pdf book.pdf --vault ~/MyVault --interactive --no-rag --skip-corrections
 """
 
-# ============================================================================
 # Data Structures
-# ============================================================================
 
 """
+
 Topic Dictionary Structure:
 {
     "id": "t1",                           # Unique identifier
@@ -365,14 +354,12 @@ User Profile:
     "hard_topics": ["Calculus"],          # Difficult topics
     "easy_topics": ["Basics"]             # Easy topics
 }
+
 """
 
-# ============================================================================
 # Examples
-# ============================================================================
 
-"""
-# Example 1: Query RAG Engine
+## Example 1: Query RAG Engine
 
 from src.rag_engine import RAGEngine
 from src.llm import LLMClient
@@ -380,21 +367,21 @@ from src.llm import LLMClient
 llm = LLMClient(provider="openai", model="gpt-4o")
 rag = RAGEngine(pdf_text, topics, llm)
 
-# Ask a question
+### Ask a question
 result = rag.query("What are the main algorithms discussed?")
 print("Answer:", result["answer"])
 
-# Get topic context
+### Get topic context
 context = rag.get_topic_context("t1")
 print("Enhanced description:", context["enhanced_description"])
 
-# Find related topics
+### Find related topics
 related = rag.suggest_related_topics("Machine Learning")
 for topic in related:
     print(f"- {topic['title']} ({topic['match_score']:.0%} match)")
 
 
-# Example 2: Run Interactive Session
+## Example 2: Run Interactive Session
 
 from src.interactive import InteractiveSession
 
@@ -414,7 +401,7 @@ if should_continue:
     print(f"Updated profile: {updated_profile}")
 
 
-# Example 3: Custom Error Detection
+## Example 3: Custom Error Detection
 
 from src.interactive import InteractiveSession
 
@@ -424,4 +411,3 @@ issues = session._detect_issues()
 for issue in issues:
     print(f"{issue['severity']}: {issue['description']}")
     print(f"  Topic: {issue['topic']['title']}")
-"""
