@@ -196,7 +196,7 @@ def node_build_schedule(state: dict) -> dict:
     """Generate day-by-day schedule from approved topics."""
     console.print("[dim]  node: build_schedule[/dim]")
 
-    topics       = state.get("approved_topics", state.get("topics", []))
+    topics       = state.get("approved_topics", state.get("topics", [])) or []
     user_profile = state.get("user_profile", {})
     llm          = _make_llm(state)
 
@@ -299,11 +299,12 @@ def node_write_vault(state: dict) -> dict:
     """Write all Obsidian markdown files."""
     console.print("[dim]  node: write_vault[/dim]")
 
+    topics = state.get("approved_topics", state.get("topics", [])) or []
     study_plan = {
         "subject":     state.get("subject", "Study Plan"),
         "description": state.get("description", ""),
-        "topics":      state.get("approved_topics", state.get("topics", [])),
-        "topic_map":   {t["id"]: t for t in state.get("approved_topics", state.get("topics", []))},
+        "topics":      topics,
+        "topic_map":   {t["id"]: t for t in topics},
         "days":        state.get("days", []),
         "notes_map":   state.get("notes_map", {}),
         "user_profile": state.get("user_profile", {}),

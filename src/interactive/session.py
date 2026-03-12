@@ -393,25 +393,28 @@ class InteractiveSession:
         elif issue_type == "missing_field":
             field = issue.get("field", "description")
             
-            # Use RAG to generate suggestion
-            console.print("[dim]Using RAG to suggest fill-in...[/dim]")
-            chunks = self.rag._search_chunks(topic["title"], top_k=2)
-            
-            if chunks:
-                suggestion = self.llm_client.chat(
-                    system_prompt="You provide helpful suggestions for topic descriptions.",
-                    user_prompt=f"Provide a concise one-sentence description for the topic '{topic['title']}' based on this content:\n\n{chunks[0]['text'][:300]}",
-                    json_mode=False
-                )
+            # Use RAG to generate suggestion if available
+            if self.rag and self.llm_client:
+                console.print("[dim]Using RAG to suggest fill-in...[/dim]")
+                chunks = self.rag._search_chunks(topic["title"], top_k=2)
                 
-                console.print(f"\n[bold]Suggested description:[/bold]")
-                console.print(f"  {suggestion}\n")
-                
-                accept = input("[dim]Use this description? (y/n):[/dim] ").strip().lower()
-                if accept == "y":
-                    topic["description"] = suggestion
-                    console.print("[green]✓ Description added[/green]")
-                    self.modified = True
+                if chunks:
+                    suggestion = self.llm_client.chat(
+                        system_prompt="You provide helpful suggestions for topic descriptions.",
+                        user_prompt=f"Provide a concise one-sentence description for the topic '{topic['title']}' based on this content:\n\n{chunks[0]['text'][:300]}",
+                        json_mode=False
+                    )
+                    
+                    console.print(f"\n[bold]Suggested description:[/bold]")
+                    console.print(f"  {suggestion}\n")
+                    
+                    accept = input("[dim]Use this description? (y/n):[/dim] ").strip().lower()
+                    if accept == "y":
+                        topic["description"] = suggestion
+                        console.print("[green]✓ Description added[/green]")
+                        self.modified = True
+            else:
+                console.print("[dim]RAG not available for suggestions[/dim]")
         
         elif issue_type == "invalid_field":
             console.print(f"[yellow]Current difficulty: {topic.get('difficulty')}[/yellow]\n")
@@ -444,7 +447,7 @@ class InteractiveSession:
         description = input("[bold]Description (optional):[/bold] ").strip()
         
         # Search for related content in PDF
-        related_chunks = self.rag._search_chunks(title, top_k=2)
+        related_chunks = self.rag._search_chunks(title, top_k=2) if self.rag else None
         
         new_topic = {
             "id": f"t{len(self.topics) + 1}",
@@ -455,7 +458,7 @@ class InteractiveSession:
             "subtopics": [],
         }
         
-        if related_chunks:
+        if related_chunks and self.llm_client:
             console.print("\n[dim]Found related content in PDF. Generate subtopics? (y/n):[/dim] ")
             if input().strip().lower() == "y":
                 # Use LLM to suggest subtopics
