@@ -1,9 +1,8 @@
-"""
-API Reference for Interactive Components
+# API Reference for Interactive Components
 
 This module provides the public APIs and interfaces for the interactive
 components, RAG engine, and error correction features.
-"""
+
 
 # RAGEngine API
 
@@ -266,7 +265,6 @@ def node_human_review(state: dict) -> dict:
 
 # Configuration
 
-"""
 Interactive mode configuration in src/interactive_config.py
 
 INTERACTIVE_MODE_ENABLED = True           # Enable interactive interface
@@ -280,11 +278,10 @@ RAG_TOP_K = 3                             # Number of search results
 # Error detection thresholds
 MIN_DESCRIPTION_LENGTH = 20               # Minimum description chars
 MAX_DUPLICATE_DISTANCE = 0.8              # Similarity threshold
-"""
 
 # Command-line Usage
 
-"""
+
 Enable interactive mode when running Pilot:
 
     # All features enabled
@@ -298,11 +295,10 @@ Enable interactive mode when running Pilot:
     
     # Both disabled
     python main.py --pdf book.pdf --vault ~/MyVault --interactive --no-rag --skip-corrections
-"""
+
 
 # Data Structures
 
-"""
 
 Topic Dictionary Structure:
 {
@@ -355,7 +351,6 @@ User Profile:
     "easy_topics": ["Basics"]             # Easy topics
 }
 
-"""
 
 # Examples
 
